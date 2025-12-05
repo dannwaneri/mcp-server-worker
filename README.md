@@ -13,6 +13,7 @@ This is a **fully remote MCP server** - no local dependencies required. Accessib
 
 - ✅ **HTTP-to-MCP Adapter**: Custom implementation (MCP SDK expects stdio, we use HTTP)
 - ✅ **Semantic Search**: Natural language queries with vector similarity
+- ✅ **Intelligent Search Tool**: Search with AI-powered synthesis context (NEW!)
 - ✅ **Edge Deployment**: Runs globally on Cloudflare's network
 - ✅ **Workers AI Integration**: `bge-small-en-v1.5` embeddings (384 dimensions)
 - ✅ **Vectorize Search**: HNSW indexing for fast similarity search
