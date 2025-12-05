@@ -78,6 +78,25 @@ export default {
 										required: ["query"],
 									},
 								},
+								{
+									name: "intelligent_search",
+									description: "Search with AI-powered synthesis. Returns search results plus context for intelligent answer generation.",
+									inputSchema: {
+									  type: "object",
+									  properties: {
+										query: {
+										  type: "string",
+										  description: "Question or search query",
+										},
+										topK: {
+										  type: "number",
+										  description: "Number of results to retrieve (1-10)",
+										  default: 3,
+										},
+									  },
+									  required: ["query"],
+									},
+								  },
 							],
 						}),
 						{
@@ -139,6 +158,74 @@ export default {
 							}
 						);
 					}
+
+
+					if (name === "intelligent_search") {
+						const query = args?.query as string;
+						const topK = Math.min((args?.topK as number) || 3, 10);
+					  
+						if (!query) {
+						  throw new Error("Query parameter is required");
+						}
+					  
+						// Generate embedding
+						const response = await env.AI.run("@cf/baai/bge-small-en-v1.5", {
+						  text: query,
+						});
+					  
+						const queryEmbedding = Array.isArray(response) ? response : (response as any).data[0];
+					  
+						// Search Vectorize
+						const searchResults = await env.VECTORIZE.query(queryEmbedding, {
+						  topK,
+						  returnMetadata: true,
+						});
+					  
+						// Format results for synthesis
+						const resultsForSynthesis = searchResults.matches
+						  .map((match, idx) => {
+							return `[${idx + 1}] Relevance: ${match.score.toFixed(2)}
+					  Content: ${match.metadata?.content}
+					  Category: ${match.metadata?.category}`;
+						  })
+						  .join("\n\n");
+					  
+						const responseText = JSON.stringify(
+						  {
+							query,
+							resultsCount: searchResults.matches.length,
+							searchResults: searchResults.matches.map((match) => ({
+							  id: match.id,
+							  score: match.score.toFixed(4),
+							  content: match.metadata?.content,
+							  category: match.metadata?.category,
+							})),
+							synthesisContext: `Answer this question: "${query}"
+					  
+					  Based on these search results:
+					  
+					  ${resultsForSynthesis}
+					  
+					  Provide a direct, concise answer using only the information above.`,
+						  },
+						  null,
+						  2
+						);
+					  
+						return new Response(
+						  JSON.stringify({
+							content: [
+							  {
+								type: "text",
+								text: responseText,
+							  },
+							],
+						  }),
+						  {
+							headers: { "Content-Type": "application/json", ...corsHeaders },
+						  }
+						);
+					  }
 
 					throw new Error(`Unknown tool: ${name}`);
 				}
